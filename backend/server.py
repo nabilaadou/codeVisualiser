@@ -16,4 +16,5 @@ app.add_middleware(
 async def root(request : Request):
 	projectFiles = await request.json()
 	diagram(projectFiles)
+	print(projectFiles);
 	return {'recieved data': projectFiles}
