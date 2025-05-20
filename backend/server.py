@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from diagramBuilder import diagram
+from diagramBuilder import createDiagram
 
 app = FastAPI()
 
@@ -15,6 +15,5 @@ app.add_middleware(
 @app.post("/diagram")
 async def root(request : Request):
 	projectFiles = await request.json()
-	diagram(projectFiles)
-	print(projectFiles);
+	createDiagram(projectFiles)
 	return {'recieved data': projectFiles}

@@ -39,11 +39,11 @@ var form = document.getElementById('uploadForm');
 var fileInput = document.getElementById('fileInput');
 function sendFilePaths(filesPaths) {
     return __awaiter(this, void 0, void 0, function () {
-        var res, data, err_1;
+        var res, err_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    _a.trys.push([0, 3, , 4]);
+                    _a.trys.push([0, 2, , 3]);
                     return [4 /*yield*/, fetch('http://localhost:8000/diagram', {
                             method: 'POST',
                             headers: {
@@ -53,32 +53,23 @@ function sendFilePaths(filesPaths) {
                         })];
                 case 1:
                     res = _a.sent();
-                    return [4 /*yield*/, res.json()];
+                    return [3 /*break*/, 3];
                 case 2:
-                    data = _a.sent();
-                    console.log('Server response:', data);
-                    return [3 /*break*/, 4];
-                case 3:
                     err_1 = _a.sent();
                     console.log('Error: ', err_1);
-                    return [3 /*break*/, 4];
-                case 4: return [2 /*return*/, res];
+                    return [3 /*break*/, 3];
+                case 3: return [2 /*return*/, res];
             }
         });
     });
 }
-function handleSubmitEvent() {
+function handleSubmitEvent(files) {
     return __awaiter(this, void 0, void 0, function () {
-        var files, filesPaths, i, file, fileContent, res;
+        var info, i, file, fileContent, res;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    files = fileInput.files;
-                    if (!files || files.length === 0) {
-                        console.log('No files selected.');
-                        return [2 /*return*/];
-                    }
-                    filesPaths = [];
+                    info = [];
                     i = 0;
                     _a.label = 1;
                 case 1:
@@ -87,12 +78,12 @@ function handleSubmitEvent() {
                     return [4 /*yield*/, file.text()];
                 case 2:
                     fileContent = _a.sent();
-                    filesPaths.push({ path: file.webkitRelativePath, content: fileContent }); // cast needed for TS
+                    info.push({ fileName: file.name, content: fileContent }); // cast needed for TS
                     _a.label = 3;
                 case 3:
                     i++;
                     return [3 /*break*/, 1];
-                case 4: return [4 /*yield*/, sendFilePaths(filesPaths)];
+                case 4: return [4 /*yield*/, sendFilePaths(info)];
                 case 5:
                     res = _a.sent();
                     return [2 /*return*/, res];
@@ -101,14 +92,24 @@ function handleSubmitEvent() {
     });
 }
 form.addEventListener('submit', function (event) { return __awaiter(_this, void 0, void 0, function () {
-    var res;
+    var files, res, resolvedRes;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, handleSubmitEvent()];
+            case 0:
+                event.preventDefault(); // to prevent the page from refreshing
+                files = fileInput.files;
+                if (!files || files.length === 0) {
+                    console.log('No files selected.');
+                    return [2 /*return*/];
+                }
+                return [4 /*yield*/, handleSubmitEvent(files)];
             case 1:
                 res = _a.sent();
-                console.log('Submit complete, server responded with:', res);
-                return [2 /*return*/, res];
+                return [4 /*yield*/, res.json()];
+            case 2:
+                resolvedRes = _a.sent();
+                console.log('Submit complete, server responded with:', resolvedRes);
+                return [2 /*return*/, resolvedRes];
         }
     });
 }); });
