@@ -23,67 +23,85 @@
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
-	const svg = d3.select("svg");
-	svg.append("line")
-	.attr("style", "stroke:red;stroke-width:")
-	.attr("x1", "0")
-	.attr("y1", "0")
-	.attr("x2", "100")
-	.attr("y2", "100")
-    // const nodes = [
-    //   { id: "main" },
-    //   { id: "parseInput" },
-    //   { id: "calculate" },
-    //   { id: "printResult" }
-    // ];
+    // Sample hierarchical data
+    const data = {
+      name: "Root",
+      children: [
+        { 
+          name: "Branch A",
+          children: [
+            { name: "Leaf 1" },
+            { name: "Leaf 2" }
+          ]
+        },
+        { 
+          name: "Branch B",
+          children: [
+            { name: "Leaf 3" }
+          ]
+        }
+      ]
+    };
 
-    // const links = [
-    //   { source: "main", target: "parseInput" },
-    //   { source: "main", target: "calculate" },
-    //   { source: "main", target: "printResult" },
-    //   { source: "calculate", target: "printResult" }
-    // ];
+    // SVG dimensions
+    const width = 600;
+    const height = 400;
+    const margin = { top: 20, right: 90, bottom: 30, left: 90 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
 
-    // const svg = d3.select("svg");
-    // const width = +svg.attr("width");
-    // const height = +svg.attr("height");
+    // Create SVG container
+    const svg = d3.select('#chart')
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // const simulation = d3.forceSimulation(nodes)
-    //   .force("link", d3.forceLink(links).id(d => d.id).distance(150))
-    //   .force("charge", d3.forceManyBody().strength(-300))
-    //   .force("center", d3.forceCenter(width / 2, height / 2));
+    // Create hierarchy from data
+    const root = d3.hierarchy(data);
 
-    // const link = svg.append("g")
-    //   .attr("class", "links")
-    //   .selectAll("line")
-    //   .data(links)
-    //   .enter().append("line")
-    //   .attr("class", "link");
+    // Create tree layout
+    const treeLayout = d3.tree()
+      .size([innerWidth, innerHeight]);
 
-    // const node = svg.append("g")
-    //   .attr("class", "nodes")
-    //   .selectAll("g")
-    //   .data(nodes)
-    //   .enter().append("g");
+    // Apply layout to hierarchy
+    treeLayout(root);
 
-    // node.append("circle")
-    //   .attr("r", 20);
+    // Create links
+    const linkGenerator = d3.linkVertical()
+      .x(d => d.x)
+      .y(d => d.y);
 
-    // node.append("text")
-    //   .text(d => d.id)
-    //   .attr("x", 25)
-    //   .attr("y", 5);
+    svg.selectAll('.link')
+      .data(root.links())
+      .enter()
+      .append('path')
+      .attr('class', 'link')
+      .attr('fill', 'none')
+      .attr('stroke', '#555')
+      .attr('stroke-width', 1.5)
+      .attr('d', linkGenerator);
 
-    // simulation.on("tick", () => {
-    //   link
-    //     .attr("x1", d => d.source.x)
-    //     .attr("y1", d => d.source.y)
-    //     .attr("x2", d => d.target.x)
-    //     .attr("y2", d => d.target.y);
+    // Create nodes
+    const nodes = svg.selectAll('.node')
+      .data(root.descendants())
+      .enter()
+      .append('g')
+      .attr('class', 'node')
+      .attr('transform', d => `translate(${d.x},${d.y})`);
 
-    //   node
-    //     .attr("transform", d => `translate(${d.x},${d.y})`);
-    // });
+    // Add circles to nodes
+    nodes.append('circle')
+      .attr('r', 5)
+      .attr('fill', '#69b3a2');
+
+    // Add labels to nodes
+    nodes.append('text')
+      .attr('dy', '0.31em')
+      .attr('x', d => d.children ? -6 : 6)
+      .attr('text-anchor', d => d.children ? 'end' : 'start')
+      .text(d => d.data.name);
   </script>
 </body>
 </html>

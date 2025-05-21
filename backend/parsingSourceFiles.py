@@ -88,6 +88,7 @@ def extractFunctions(cursor, filename : str) -> dict:
     for child in cursor.get_children():
         if isUserFunction(child, filename):
             fElement= {}
+            fName = child.spelling
             callExprs = getFunctionCalls(child, filename)
             fArgs = getFunctionArgs(child)
             fType = getFunctionType(child.kind)
@@ -95,21 +96,34 @@ def extractFunctions(cursor, filename : str) -> dict:
             if fType in {'method', 'constructer', 'destructer', 'operator'}:
                 parentClass = child.semantic_parent.spelling
 
+            fElement['name'] = fName
             fElement['args'] = fArgs
             fElement['type'] = fType
             fElement['parentClass'] = parentClass
             fElement['callExprs'] = callExprs
+            fElement['children'] = []
             functionsTree[child.spelling] = fElement
 
         extractFunctions(child, filename)
     return functionsTree
 
+def structreInfosTreeLike(info : dict, root : str) -> None:
+    for child in info[root]['callExprs']:
+        if child in list(info.keys()):
+            structreInfosTreeLike(info, child)
+            info[root]['children'].append(info[child])
+
+
+def removeExtraNodes(info : dict) -> None:
+    for key in list(info.keys()):
+        if key != 'main':
+            del info[key]
 
 def generatingCleanedAST(files : list) -> dict:
     #create a map out of this list(key->file name, value->file content)
     mp_files = mapifyList(files)
     index = cindex.Index.create()
-    cleanedAST = {}
+    filesFunctionsInfo = {}
 
     try:
         tmpDir = tempfile.mkdtemp() #creating a tmp dir
@@ -136,8 +150,8 @@ def generatingCleanedAST(files : list) -> dict:
                     options= 0
                 )
 
-                filesCleanedAST = extractFunctions(translationUnit.cursor, name)
-                cleanedAST.update(filesCleanedAST)
+                currentFileInfo = extractFunctions(translationUnit.cursor, name)
+                filesFunctionsInfo.update(currentFileInfo)
     except:
         print('Error: operation of writing content to a tmp directory failed')
     finally:
@@ -145,9 +159,15 @@ def generatingCleanedAST(files : list) -> dict:
         shutil.rmtree(tmpDir)
     
 	#removing callExprs that aren't defined by the user
-    for key in list(cleanedAST.keys()):
-        for callExpr in cleanedAST[key]['callExprs']:
-            if callExpr not in list(cleanedAST.keys()):
-                cleanedAST[key]['callExprs'].remove(callExpr)
+    for key in list(filesFunctionsInfo.keys()):
+        for callExpr in filesFunctionsInfo[key]['callExprs']:
+            if callExpr not in list(filesFunctionsInfo.keys()):
+                filesFunctionsInfo[key]['callExprs'].remove(callExpr)
+    
 
-    return cleanedAST
+    #structring the data as a tree with the main() as the root
+    structreInfosTreeLike(filesFunctionsInfo, 'main')
+    #removin nodes in the first layer leaving just main() as the root
+    removeExtraNodes(filesFunctionsInfo)
+
+    return filesFunctionsInfo
