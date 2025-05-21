@@ -1,3 +1,5 @@
+import { generateDiagram } from './generateDiagram.js'
+
 const form = document.getElementById('uploadForm') as HTMLFormElement;
 const fileInput = document.getElementById('fileInput') as HTMLInputElement;
 
@@ -44,8 +46,10 @@ form.addEventListener('submit', async (event) => {
 	}
 
 	const	res = await handleSubmitEvent(files);
-	const	resolvedRes = await res.json();
+	const	codeTree = await res.json();
 	
-	console.log('Submit complete, server responded with:', resolvedRes);
-	return resolvedRes;
+	console.log('Submit complete, server responded with:', codeTree);
+
+	generateDiagram(codeTree)
+	return codeTree;
 });
