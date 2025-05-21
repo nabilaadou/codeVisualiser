@@ -15,5 +15,5 @@ app.add_middleware(
 @app.post("/diagram")
 async def root(request : Request):
 	projectFiles = await request.json()
-	createDiagram(projectFiles)
-	return {'recieved data': projectFiles}
+	response = createDiagram(projectFiles)
+	return response

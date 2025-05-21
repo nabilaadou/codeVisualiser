@@ -6,7 +6,7 @@ type filesInfo = {
 	content: string;
 };
 
-async function sendFilePaths(filesPaths : filesInfo[]) {
+async function sendFilePaths(data : filesInfo[]) {
 	let	res;
 	try {
 		res = await fetch('http://localhost:8000/diagram', {
@@ -14,7 +14,7 @@ async function sendFilePaths(filesPaths : filesInfo[]) {
 			headers: {
 				'Content-type': 'application/json'
 			},
-			body: JSON.stringify(filesPaths)
+			body: JSON.stringify(data)
   		});
 	} catch (err) {
 		console.log('Error: ', err);
@@ -23,14 +23,14 @@ async function sendFilePaths(filesPaths : filesInfo[]) {
 }
 
 async function handleSubmitEvent(files : FileList) {
-	const	info : filesInfo[] = [];
+	const	data : filesInfo[] = [];
 
 	for (let i = 0; i < files.length; i++) {
 		const file = files[i];
 		const fileContent = await file.text();
-		info.push({fileName: file.name, content: fileContent}) // cast needed for TS
+		data.push({fileName: file.name, content: fileContent}) // cast needed for TS
 	}
-	const res = await sendFilePaths(info);
+	const res = await sendFilePaths(data);
 	return res;
 }
 
