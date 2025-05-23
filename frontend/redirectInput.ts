@@ -11,7 +11,7 @@ type filesInfo = {
 async function sendFilePaths(data : filesInfo[]) {
 	let	res;
 	try {
-		res = await fetch('http://localhost:8000/diagram', {
+		res = await fetch('http://localhost:8000/pySourceFiles', {
 			method: 'POST',
 			headers: {
 				'Content-type': 'application/json'

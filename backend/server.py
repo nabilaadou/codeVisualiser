@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from parseInputData import constructResponse
+from cppTreeGenerator import cppGenerateTree
+from pyTreeGenerator import pyGenerateTree
 
 app = FastAPI()
 
@@ -12,8 +13,14 @@ app.add_middleware(
     allow_headers=["*"]   # Allow all headers like Content-Type
 )
 
-@app.post("/diagram")
+@app.post("/cppSourceFiles")
 async def root(request : Request):
 	projectFiles = await request.json()
-	response = constructResponse(projectFiles)
+	response = cppGenerateTree(projectFiles)
+	return response
+
+@app.post("/pySourceFiles")
+async def root(request : Request):
+	projectFiles = await request.json()
+	response = pyGenerateTree(projectFiles)
 	return response

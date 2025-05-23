@@ -1,133 +1,70 @@
-from clang import cindex
-import tempfile
-import os
+# import astroid
 
-def deep_debug_clang(main_cpp_content, header_content, header_path):
-    """
-    Comprehensive debugging for clang parsing issues
-    """
-    
-    # Create temporary files
-    temp_dir = tempfile.mkdtemp()
-    try:
-        main_path = os.path.join(temp_dir, "main.cpp")
-        zombie_h_path = os.path.join(temp_dir, "Zombie.h")
-        
-        with open(main_path, 'w') as f:
-            f.write(main_cpp_content)
-        with open(zombie_h_path, 'w') as f:
-            f.write(header_content)
-        
-        index = cindex.Index.create()
-        
-        # Parse with maximum verbosity
-        tu = index.parse(
-            path=main_path,
-            args=[
-                "-std=c++17", 
-                f"-I{temp_dir}",
-                "-v",  # Verbose
-                "-H",  # Show headers
-            ],
-            options=(cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD |
-                    cindex.TranslationUnit.PARSE_INCOMPLETE)
-        )
-        
-        print("=== DIAGNOSTICS ===")
-        for diag in tu.diagnostics:
-            print(f"[{diag.severity}] {diag}")
-        
-        print("\n=== SYMBOL TABLE DEBUG ===")
-        def analyze_symbols(cursor, depth=0):
-            indent = "  " * depth
-            
-            # Print all cursors with their details
-            if cursor.spelling and ("newZombie" in cursor.spelling or 
-                                  "deleteZombie" in cursor.spelling or
-                                  cursor.kind == cindex.CursorKind.CALL_EXPR):
-                print(f"{indent}>>> {cursor.kind} — '{cursor.spelling}'")
-                print(f"{indent}    Type: {cursor.type.spelling if cursor.type else 'None'}")
-                print(f"{indent}    Location: {cursor.location}")
-                if cursor.referenced:
-                    print(f"{indent}    References: {cursor.referenced.kind} — {cursor.referenced.spelling}")
-                print(f"{indent}    USR: {cursor.get_usr()}")
-                print()
-            
-            for child in cursor.get_children():
-                analyze_symbols(child, depth + 1)
-        
-        analyze_symbols(tu.cursor)
-        
-        print("\n=== FIND ALL FUNCTION DECLARATIONS ===")
-        def find_function_decls(cursor, depth=0):
-            if cursor.kind == cindex.CursorKind.FUNCTION_DECL:
-                print(f"Function: {cursor.spelling}")
-                print(f"  Type: {cursor.type.spelling}")
-                print(f"  Location: {cursor.location}")
-                print(f"  USR: {cursor.get_usr()}")
-                print()
-            
-            for child in cursor.get_children():
-                find_function_decls(child, depth + 1)
-        
-        find_function_decls(tu.cursor)
-        
-        print("\n=== MANUAL SYMBOL LOOKUP ===")
-        # Try to manually find the symbol
-        def find_cursor_by_name(cursor, name):
-            if cursor.spelling == name:
-                return cursor
-            for child in cursor.get_children():
-                result = find_cursor_by_name(child, name)
-                if result:
-                    return result
-            return None
-        
-        newZombie_cursor = find_cursor_by_name(tu.cursor, "newZombie")
-        if newZombie_cursor:
-            print(f"Found newZombie cursor: {newZombie_cursor.kind}")
-            print(f"Type: {newZombie_cursor.type.spelling}")
-        else:
-            print("Could not find newZombie cursor anywhere in AST!")
-        
-    finally:
-        import shutil
-        shutil.rmtree(temp_dir)
+# def print_node_info(node, depth):
+#     print(f'{' ' * depth}', end='')
+#     kind = node.__class__.__name__
+#     name = None
 
-# Example usage:
-main_cpp = '''
-#include "Zombie.h"
+#     if hasattr(node, "name"):
+#         name = node.name
+#     elif kind == "Name":
+#         name = node.name  # variable or identifier
 
-int main ()
-{
-    Zombie *AllocatedZombie;
-    AllocatedZombie = newZombie("heapZombie");
-    newZombie("ss");
-    AllocatedZombie->announce();
-    randomChump("stackZombie");
-    deleteZombie(AllocatedZombie);
-    return 0;
-}
-'''
+#     if name:
+#         print(f"{kind} with name: {name}")
+#     else:
+#         print(f"{kind} (no name)")
 
-zombie_h = '''
-#pragma once
+# def traverse_ast(node, depth=0):
+#     print_node_info(node, depth)
 
-#include <iostream>
+#     for child in node.get_children():
+#         traverse_ast(child, depth + 1)
 
-class Zombie {
-private:
-    std::string _name;
-public:
-    Zombie(std::string name);
-    ~Zombie();
-    void announce();
-};
+# # Example usage
+# source_code = """
+# def greet(name):
+#     print("Hello", name)
 
-Zombie* newZombie( std::string name );
-void    randomChump( std::string name );
-void    deleteZombie(Zombie *zombie);
-'''
+# class Greeter:
+#     def greet_all(self, names):
+#         for name in names:
+#             greet(name)
+# """
 
-# Run the deep debug
-deep_debug_clang(main_cpp, zombie_h, "")
+# module = astroid.parse(source_code)
+# traverse_ast(module)
+
+
+import astroid
+
+source_code = """
+def greet(name):
+    print("Hello", name)
+
+def greet_all(names):
+    for name in names:
+        greet(name)
+"""
+
+module = astroid.parse(source_code)
+
+def find_and_resolve_calls(node):
+    if isinstance(node, astroid.nodes.Call):
+        print("Found call to:", node.func.as_string())
+
+        try:
+            inferred = next(node.func.infer())
+            if isinstance(inferred, astroid.nodes.FunctionDef):
+                print("  Resolved to function definition:", inferred.name)
+                print(inferred.argnames())
+        except astroid.InferenceError:
+            print("  Could not resolve function definition")
+
+    for child in node.get_children():
+        find_and_resolve_calls(child)
+
+# Start from the top
+for node in module.body:
+    if isinstance(node, astroid.FunctionDef) and node.name == "greet_all":
+        find_and_resolve_calls(node)

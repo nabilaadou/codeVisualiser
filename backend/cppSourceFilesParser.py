@@ -8,19 +8,8 @@ potential_call_exprs = [
         CursorKind.CALL_EXPR,              # Normal case
         CursorKind.OVERLOADED_DECL_REF,    # Most common alternative
         CursorKind.DECL_REF_EXPR,          # Function pointers
-        # CursorKind.UNEXPOSED_EXPR,         # Hidden calls
         CursorKind.TEMPLATE_REF,           # Template functions
-        # CursorKind.CXX_UNARY_EXPR,         # Unary operators
-        # CursorKind.CXX_BINARY_EXPR,        # Binary operators  
-        # CursorKind.CXX_OPERATOR_CALL_EXPR, # Operator overloads
-        # CursorKind.CXX_CONSTRUCT_EXPR,     # Constructors
-        # CursorKind.CXX_TEMPORARY_OBJECT_EXPR, # Temporary objects
-        # CursorKind.CXX_FUNCTIONAL_CAST_EXPR,  # Functional casts
-        # CursorKind.CXX_MEMBER_CALL_EXPR,   # Member calls
-        # CursorKind.MEMBER_REF_EXPR,        # Member references
-        # CursorKind.MACRO_EXPANSION,        # Macro calls
-        # CursorKind.UNEXPOSED_STMT,         # Unexposed statements
-        CursorKind.LAMBDA_EXPR,            # Lambda calls
+
     ]
 
 def mapifyList(files : list) -> dict:
@@ -90,45 +79,43 @@ def getFunctionType(kind : str) -> str:
     else:
         return 'operator'
 
-def getFunctionCalls(cursor, fileName : str) -> list:
+def existingFunctionName(info : dict, name : str) -> bool:
+    for key in list(info.keys()):
+        if info[key]['name'] == name:
+            return key, True
+    return '', False
+
+def extractCallExprs(info : dict, cursor) -> list:
     subCalls = []
 
-    for subFunctionChild in cursor.get_children():
-        print(f"name -> {subFunctionChild.spelling} -> kind -> {subFunctionChild.kind}")
-        if subFunctionChild.kind in potential_call_exprs:
-            if subFunctionChild.spelling != '':
-                subCalls.append(subFunctionChild.spelling)
-
-        tmpSubCalls = getFunctionCalls(subFunctionChild, fileName)
-        if tmpSubCalls != []:
-            subCalls.extend(tmpSubCalls)
+    for child in cursor.get_children():
+        if child.kind in potential_call_exprs:
+            elementName = child.spelling
+            if existingFunctionName(info, elementName):
+                subCalls.append(elementName)
+        if child.kind != CursorKind.CALL_EXPR:
+            subCalls.extend(extractCallExprs(info, child))
     return subCalls
 
 def extractFunctions(cursor, filename : str) -> dict:
-    '''
-    for child in cursor.get_children():
-        for 
-        cursor = child
-    '''
     functionsTree = {}
     for child in cursor.get_children():
         if isUserFunction(child, filename):
             fElement= {}
             fName = child.spelling
-            print(f'function  => {child.spelling}')
-            callExprs = getFunctionCalls(child, filename)
             fArgs = getFunctionArgs(child)
             fType = getFunctionType(child.kind)
             parentClass = ''
             if fType in {'method', 'constructer', 'destructer', 'operator'}:
                 parentClass = child.semantic_parent.spelling
 
-            fElement['name'] = fName
             fElement['args'] = fArgs
+            fElement['name'] = fName+fArgs
             fElement['type'] = fType
             fElement['parentClass'] = parentClass
-            fElement['callExprs'] = callExprs
+            fElement['callExprs'] = []
             fElement['children'] = []
+            fElement['childCursor'] = child
             functionsTree[child.spelling+fArgs] = fElement
 
         extractFunctions(child, filename)
@@ -141,12 +128,19 @@ def structreInfosTreeLike(info : dict, root : str) -> None:
             info[root]['children'].append(info[child])
 
 
-def removeExtraNodes(info : dict) -> None:
+def getfunctionKey(info : dict , name : str) -> str:
     for key in list(info.keys()):
-        if key != 'main':
+        functionNameAlone = key.split('(')[0]
+        if functionNameAlone == name:
+            return key
+    return ''
+
+def removeExtraNodes(info : dict, toKeep : str) -> None:
+    for key in list(info.keys()):
+        if key != toKeep:
             del info[key]
 
-def generatingCleanedAST(files : list) -> dict:
+def cppParseFiles(files : list) -> dict:
     #create a map out of this list(key->file name, value->file content)
     mp_files = mapifyList(files)
     #creating an instance from the libclang so we can connect with the api => check if this is what is really happening
@@ -186,19 +180,18 @@ def generatingCleanedAST(files : list) -> dict:
         # Clean up the temporary directory
         shutil.rmtree(tmpDir)
     
-	#removing callExprs that aren't defined by the user
+    #extracting call_exprs
+    # extracting callExprs need to be fixed -> when getting a callExpr i need to get its arguments type too
+    # to avoid conflicts when it comes to overloaded functions
     for key in list(filesFunctionsInfo.keys()):
-        for callExpr in filesFunctionsInfo[key]['callExprs']:
-            if callExpr not in list(filesFunctionsInfo.keys()):
-                filesFunctionsInfo[key]['callExprs'].remove(callExpr)
-    
-    for key in list(filesFunctionsInfo.keys()):
-        print(f"{key} -> {filesFunctionsInfo[key]}")
+        callExpressions = extractCallExprs(filesFunctionsInfo, filesFunctionsInfo[key]['childCursor'])
+        filesFunctionsInfo[key]['callExprs'] = callExpressions
 
-    if 'main' in list(filesFunctionsInfo.keys()):
+    # functionKey = getfunctionKey(filesFunctionsInfo, 'main')
+    # if functionKey != '':
         #structring the data as a tree with the main() as the root
-        structreInfosTreeLike(filesFunctionsInfo, 'main')
-        #removin nodes in the first layer leaving just main() as the root
-        removeExtraNodes(filesFunctionsInfo)
-        return filesFunctionsInfo['main']
+        # structreInfosTreeLike(filesFunctionsInfo, functionKey)
+    #     #removin nodes in the first layer leaving just main() as the root
+    #     removeExtraNodes(filesFunctionsInfo, functionKey)
+    #     return filesFunctionsInfo[functionKey]
     return {}
