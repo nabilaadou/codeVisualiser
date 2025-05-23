@@ -4,6 +4,25 @@ import os
 import tempfile
 import shutil
 
+potential_call_exprs = [
+        CursorKind.CALL_EXPR,              # Normal case
+        CursorKind.OVERLOADED_DECL_REF,    # Most common alternative
+        CursorKind.DECL_REF_EXPR,          # Function pointers
+        # CursorKind.UNEXPOSED_EXPR,         # Hidden calls
+        CursorKind.TEMPLATE_REF,           # Template functions
+        # CursorKind.CXX_UNARY_EXPR,         # Unary operators
+        # CursorKind.CXX_BINARY_EXPR,        # Binary operators  
+        # CursorKind.CXX_OPERATOR_CALL_EXPR, # Operator overloads
+        # CursorKind.CXX_CONSTRUCT_EXPR,     # Constructors
+        # CursorKind.CXX_TEMPORARY_OBJECT_EXPR, # Temporary objects
+        # CursorKind.CXX_FUNCTIONAL_CAST_EXPR,  # Functional casts
+        # CursorKind.CXX_MEMBER_CALL_EXPR,   # Member calls
+        # CursorKind.MEMBER_REF_EXPR,        # Member references
+        # CursorKind.MACRO_EXPANSION,        # Macro calls
+        # CursorKind.UNEXPOSED_STMT,         # Unexposed statements
+        CursorKind.LAMBDA_EXPR,            # Lambda calls
+    ]
+
 def mapifyList(files : list) -> dict:
     mp_files = {}
     for element in files:
@@ -50,13 +69,14 @@ def isUserFunction(cursor, fileName : str) -> bool:
         cursor.location.file.name == fileName
     )
 
-def getFunctionArgs(cursor) ->list:
+    
+def getFunctionArgs(cursor) ->str:
     fArg = []
 
     for subFunctionChild in cursor.get_children():
         if subFunctionChild.kind == CursorKind.PARM_DECL:
-            fArg.append((subFunctionChild.type.spelling, subFunctionChild.spelling))
-    return fArg
+            fArg.append(subFunctionChild.type.spelling + ' ' + subFunctionChild.spelling)
+    return '(' + ', '.join(fArg) + ')'
 
 def getFunctionType(kind : str) -> str:
     if kind == CursorKind.FUNCTION_DECL:
@@ -74,21 +94,28 @@ def getFunctionCalls(cursor, fileName : str) -> list:
     subCalls = []
 
     for subFunctionChild in cursor.get_children():
-        if subFunctionChild.kind == CursorKind.CALL_EXPR: #CALL-EXPR refers to a node that is being called it can be a function method etc
+        print(f"name -> {subFunctionChild.spelling} -> kind -> {subFunctionChild.kind}")
+        if subFunctionChild.kind in potential_call_exprs:
             if subFunctionChild.spelling != '':
                 subCalls.append(subFunctionChild.spelling)
-        else:
-            tmpSubCalls = getFunctionCalls(subFunctionChild, fileName)
-            if tmpSubCalls != []:
-                subCalls.extend(tmpSubCalls)
+
+        tmpSubCalls = getFunctionCalls(subFunctionChild, fileName)
+        if tmpSubCalls != []:
+            subCalls.extend(tmpSubCalls)
     return subCalls
 
 def extractFunctions(cursor, filename : str) -> dict:
+    '''
+    for child in cursor.get_children():
+        for 
+        cursor = child
+    '''
     functionsTree = {}
     for child in cursor.get_children():
         if isUserFunction(child, filename):
             fElement= {}
             fName = child.spelling
+            print(f'function  => {child.spelling}')
             callExprs = getFunctionCalls(child, filename)
             fArgs = getFunctionArgs(child)
             fType = getFunctionType(child.kind)
@@ -102,7 +129,7 @@ def extractFunctions(cursor, filename : str) -> dict:
             fElement['parentClass'] = parentClass
             fElement['callExprs'] = callExprs
             fElement['children'] = []
-            functionsTree[child.spelling] = fElement
+            functionsTree[child.spelling+fArgs] = fElement
 
         extractFunctions(child, filename)
     return functionsTree
@@ -122,38 +149,39 @@ def removeExtraNodes(info : dict) -> None:
 def generatingCleanedAST(files : list) -> dict:
     #create a map out of this list(key->file name, value->file content)
     mp_files = mapifyList(files)
+    #creating an instance from the libclang so we can connect with the api => check if this is what is really happening
     index = cindex.Index.create()
     filesFunctionsInfo = {}
 
     try:
         tmpDir = tempfile.mkdtemp() #creating a tmp dir
+
+
         #opening all files in the tmp dir we created before
         filesPath = []
         for key, value in mp_files.items():
-            path = os.path.join(tmpDir, key)
-            filesPath.append(path)
-            with open(path, 'w') as f:
-                    f.write(value)
+            suffix = os.path.splitext(key);
+            if suffix[1] in {'.cpp', '.hpp', '.h', '.tpp'}: #opening files with these extensions
+                path = os.path.join(tmpDir, key)
+                filesPath.append(path) #storing the files path to parse them later
+                with open(path, 'w') as f:
+                        f.write(value)
 
         for name in filesPath:
             #extracting the suffix of the file name to check what type it is
-            pos = name.rfind('.')
-            suffix = ''
-            if pos != -1:
-                suffix = name[pos+1:]
+            suffix = os.path.splitext(name)[1]
 
-            if suffix == 'cpp':
+            if suffix == '.cpp':
                 #creating a tu to accessing the ast vie the cursor variable
                 translationUnit = index.parse(
                     path=name,
-                    args= ["-std=c++17"],
-                    options= 0
+                    args= ["-std=c++17", "-I."],
+                    options=0
                 )
-
                 currentFileInfo = extractFunctions(translationUnit.cursor, name)
                 filesFunctionsInfo.update(currentFileInfo)
     except:
-        print('Error: operation of writing content to a tmp directory failed')
+        print('Error: operation of writing content to a tmp files failed')
     finally:
         # Clean up the temporary directory
         shutil.rmtree(tmpDir)
@@ -164,10 +192,13 @@ def generatingCleanedAST(files : list) -> dict:
             if callExpr not in list(filesFunctionsInfo.keys()):
                 filesFunctionsInfo[key]['callExprs'].remove(callExpr)
     
+    for key in list(filesFunctionsInfo.keys()):
+        print(f"{key} -> {filesFunctionsInfo[key]}")
 
-    #structring the data as a tree with the main() as the root
-    structreInfosTreeLike(filesFunctionsInfo, 'main')
-    #removin nodes in the first layer leaving just main() as the root
-    removeExtraNodes(filesFunctionsInfo)
-
-    return filesFunctionsInfo
+    if 'main' in list(filesFunctionsInfo.keys()):
+        #structring the data as a tree with the main() as the root
+        structreInfosTreeLike(filesFunctionsInfo, 'main')
+        #removin nodes in the first layer leaving just main() as the root
+        removeExtraNodes(filesFunctionsInfo)
+        return filesFunctionsInfo['main']
+    return {}
