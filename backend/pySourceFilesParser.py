@@ -1,86 +1,111 @@
-import astroid.nodes
-import jedi # amma use it to resolve imported function that can't be resolved with astroid
-from cppSourceFilesParser import mapifyList
 import astroid
+import ast
 import os
-import tempfile
-import shutil
 
-def	getCallExprs(callExprs : list, module) -> None:
-    for node in module.get_children():
-        '''
-			use infer() to find the node of the actual function call
-            if infer can't resolve the function then use jedi to reolve it
-        '''
-        if isinstance(node, astroid.nodes.Call):
-            callExprs.append(node.func.as_string())
-        getCallExprs(callExprs, node)
+class	pyParser:
+	def	__init__(self, sourceFiles : dict):
+		self.modules = {}
+		self.allFuncDefs = {}
+		self.tree = {
+			'name': 'pyTreeGenerator.py',
+			'children': []
+			}
 
-def	getFunctionCalls(module) -> dict:
-    tree = {}
-    for node in module.get_children():
-        if isinstance(node, astroid.nodes.FunctionDef):
-            fElement = {}
-            fArgs = '(' + ', '.join(node.argnames()) + ')'
-            fName = node.name + fArgs
-            fType = node.display_type()
+		for key, value in sourceFiles.items():
+			suffix = os.path.splitext(key)[1]
+			if suffix == '.py':
+				self.modules[key] = astroid.parse(value)
+		startingNodes = self.findStarterFunction('pyTreeGenerator.py')
+		self.getAllFunctionDefs()
+		self.structerTree(self.tree['children'], startingNodes)
+		print(self.tree)
 
-            fElement['args'] = fArgs
-            fElement['name'] = fName
-            fElement['type'] = fType
-            fElement['parentClass'] = '' # empty for now untill i figure out how to get the p class
-            fElement['callExprs'] = []
-            fElement['children'] = []
-            fElement['childNode'] = node
-            tree[fName] = fElement
+	def	findStarterFunction(self, executedFile : str) -> list:
+		'''
+			first amma look for a main() if it exists if not 
+			i ll start looking for all global functions and those gonna be the start of my script
+		'''
+		startingNodes = []
+		mainBloc = self.findMain(self.modules[executedFile])
+		globalFuncs = []
+		if mainBloc == None:
+			globalFuncs = self.findAllGlobalFunctions(self.modules[executedFile])
+			if globalFuncs == []:
+				raise RuntimeError('no existing starting function')
+			startingNodes = globalFuncs
+		else:
+			for node in mainBloc.nodes_of_class(astroid.Call):
+				startingNodes.append(node.func.name)
+		return startingNodes
+
+
+	def isMain(self, node):
+		"""Check if a node represents __name__ == '__main__' comparison"""
+		if not isinstance(node, astroid.Compare):
+			return False
+		if not (isinstance(node.left, astroid.Name) and node.left.name == '__name__'):
+			return False
+		if len(node.ops) != 1:
+			return False
+		op, comparator = node.ops[0]
+		if op != '==':
+			return False
+		if isinstance(comparator, astroid.Const):
+			return comparator.value == '__main__'
             
-        getFunctionCalls(node)
-    return tree
+		return False
 
-def structreInfosTreeLike(info : dict, root : str) -> None:
-    for child in info[root]['callExprs']:
-        if child in list(info.keys()):
-            structreInfosTreeLike(info, child)
-            info[root]['children'].append(info[child])
+	def	findMain(self, module):
+		for node in module.nodes_of_class(astroid.If):
+			if self.isMain(node.test):
+				return node
+			# Also checking for the reverse order 'main' == __name__
+			if isinstance(node.test, astroid.Compare):
+				test = node.test #the test variable is the node of whats being evaluated (tested)
+				if (isinstance(test.left, astroid.Const) and
+					test.left.value == '__main__' and
+					len(test.ops) == 1):
 
-def	pyParseFiles(files : list) -> dict:
-    sourceFiles = mapifyList(files)
-    graphCallTree = {}
+					op, comparator = test.ops[0]
+					if (isinstance(op, ast.Eq) and
+				    	isinstance(comparator, astroid.Name) and
+				    	comparator.name == '__name__'):
+						return node
+		return None
+	
+	def analyze_call_context(self, node) -> bool:
+		# Get the scope of the call
+		scope = node.scope()
+		if isinstance(scope, astroid.Module):
+			return True
+		else:
+			return False
 
-    try:
-        tmpDir = tempfile.mkdtemp() #creating a tmp dir
+	def	findAllGlobalFunctions(self, module):
+		globalFuncs = []
+		for node in module.nodes_of_class(astroid.Call):
+			if self.analyze_call_context(node):
+				globalFuncs.append(node)
+		return globalFuncs
+		
+	def	getAllFunctionDefs(self):
+		for module in list(self.modules.values()):
+			for node in module.nodes_of_class(astroid.FunctionDef):
+				self.allFuncDefs[node.name] = node
 
-        #opening all files in the tmp dir we created before
-        filesPath = []
-        for key, value in sourceFiles.items():
-            suffix = os.path.splitext(key);
-            if suffix[1] == '.py': #opening files with these extensions
-                path = os.path.join(tmpDir, key)
-                print(path)
-                filesPath.append(path) #storing the files path to parse them later
-                with open(path, 'w') as fd:
-                        fd.write(value)
-        print('hereee')
-        project = astroid.MANAGER.project_from_files(filesPath)
-        for key in list(sourceFiles.keys()):
-            fileName = os.path.splitext(key)[0]
-            module = project.get_module(fileName)
-            filesInfo = getFunctionCalls(module)
-            graphCallTree.update(filesInfo)
-    except:
-        print('Error: operation of writing content to a tmp files failed')
-    finally:
-        # Clean up the temporary directory
-        shutil.rmtree(tmpDir)
+	def	structerTree(self, children : list, callExprs : list):
+		'''
+			still need to handle recursive calls and display them some how in the tree
+		'''
+		for callName in callExprs:
+			if callName in list(self.allFuncDefs.keys()):
+				funcCallExprs = []
+				child = {}
 
-    for key in list(graphCallTree.keys()):
-        getCallExprs(graphCallTree[key]['callExprs'], graphCallTree[key]['childNode'])
-        del graphCallTree[key]['childNode'] # removin this key as it is useless now
-
-    for keys in list(graphCallTree.keys()):
-        structreInfosTreeLike(graphCallTree, key)
-
-    for key in list(graphCallTree.keys()):
-        print(f"function =======>>>>{key}\nchilds:")
-        print(f'{graphCallTree[key]['children']}\ncallExprs:')
-        print(f'{graphCallTree[key]['callExprs']}')
+				child['name'] = callName
+				child['children'] = []
+				for node in self.allFuncDefs[callName].nodes_of_class(astroid.Call):
+					if hasattr(node.func, 'name') and node.func.name != callName:
+						funcCallExprs.append(node.func.name)
+				self.structerTree(child['children'], funcCallExprs)
+				children.append(child)
