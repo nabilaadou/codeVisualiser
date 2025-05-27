@@ -2,20 +2,22 @@
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 
 export function	generateDiagram(tree : JSON) {
-	const width = 800;
-	const height = 400;
-	const topMargin = 40;
-	
+	// figure out how to now be ontop of the help box
+	// removing the upload page
+	d3.select('#uploadPage').remove();	
+
 	const svg = d3.create('svg')
-		.attr('height', height)
-		.attr('width', width);
-	
+		.attr('height', '100vh')
+		.attr('width', '100vw');
+
 	const root = d3.hierarchy(tree);
-	const treeLayout = d3.tree().size([width, height - topMargin]);
+	const treeLayout = d3.tree().nodeSize([200, 150]); //width , height
 	treeLayout(root);
 	
-	const g = svg.append("g")
-		.attr("transform", `translate(0, ${topMargin})`);
+	const centerX = window.innerWidth / 2;
+	const centerY = window.innerHeight / 2;
+
+	const g = svg.append("g");
 
 	g.selectAll('.links')
 		.data(root.links())
@@ -26,20 +28,29 @@ export function	generateDiagram(tree : JSON) {
       		.attr("stroke-opacity", 0.6)
       		.attr("stroke-width", 0.8)
 			.attr('d', d3.linkVertical()
-				.x(d => d.x)
-				.y(d => d.children ? d.y : d.y - 17)
+				.x(d => d.x + centerX)
+				.y(d => d.y + centerY)
 			);
 	
 	const nodes = g.selectAll("g.nodes")
 		.data(root.descendants())
 			.join('g')
 			.attr('class', 'nodes')
-			.attr('transform', d => `translate(${d.x}, ${d.y})`);
+			.attr('transform', d => `translate(${d.x + centerX}, ${d.y + centerY})`);
 	
 	nodes.append('text')
 		.attr('text-anchor', 'middle')
 		.text(d => d.data.name);
-
+	
+	const zoom = d3.zoom()
+		.on('zoom', (event) => {
+			g.attr('transform', event.transform);
+		});
+	
+	svg.call(zoom)
+	
+	//removing any existant svg
+	d3.select('svg').remove()
 	// Append SVG to body
 	d3.select('body')
 	  .append(() => svg.node());

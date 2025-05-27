@@ -1,15 +1,22 @@
 import { generateDiagram } from './generateDiagram.js'
 
-const form = document.getElementById('uploadForm') as HTMLFormElement;
-const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-
 type filesInfo = {
 	fileName: string;
 	content: string;
 };
 
-async function sendFilePaths(data : filesInfo[]) {
-	let	res;
+async function sendDataToBackend(folder : FileList, file : string) {
+	let		res;
+	const data = {
+		folder: {},
+		file: file
+	};
+
+	for (let i = 0; i < folder.length; i++) {
+		const file = folder[i];
+		const fileContent = await file.text();
+		data.folder[file.name] = fileContent;
+	}
 	try {
 		res = await fetch('http://localhost:8000/pySourceFiles', {
 			method: 'POST',
@@ -24,32 +31,25 @@ async function sendFilePaths(data : filesInfo[]) {
 	return res;
 }
 
-async function handleSubmitEvent(files : FileList) {
-	const	data : filesInfo[] = [];
+export function formElements(formElement : HTMLFormElement, folderInputElement : HTMLInputElement, fileInputElement : HTMLInputElement) {
+	formElement.addEventListener('submit', async (event) => {
+		event.preventDefault(); // to prevent the page from refreshing
 
-	for (let i = 0; i < files.length; i++) {
-		const file = files[i];
-		const fileContent = await file.text();
-		data.push({fileName: file.name, content: fileContent}) // cast needed for TS
-	}
-	const res = await sendFilePaths(data);
-	return res;
+		const	folder = folderInputElement.files;
+		const	file = fileInputElement.value;
+		if (!folder || folder.length === 0) {
+			console.log('No folder selected.');
+			return;
+		} else if (file == '') {
+			console.log('no file were selected')
+			return;
+		}
+		
+		const	res = await sendDataToBackend(folder, file);
+		const	codeTree = await res.json();
+		
+		console.log('Submit complete, server responded with:', codeTree);
+		generateDiagram(codeTree)
+		return codeTree;
+	});
 }
-
-form.addEventListener('submit', async (event) => {
-	event.preventDefault(); // to prevent the page from refreshing
-
-	const	files = fileInput.files;
-	if (!files || files.length === 0) {
-		console.log('No files selected.');
-		return;
-	}
-
-	const	res = await handleSubmitEvent(files);
-	const	codeTree = await res.json();
-	
-	console.log('Submit complete, server responded with:', codeTree);
-
-	generateDiagram(codeTree)
-	return codeTree;
-});

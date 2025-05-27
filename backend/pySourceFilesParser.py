@@ -3,11 +3,11 @@ import ast
 import os
 
 class	pyParser:
-	def	__init__(self, sourceFiles : dict):
+	def	__init__(self, sourceFiles : dict, targetFile : str):
 		self.modules = {}
 		self.allFuncDefs = {}
 		self.tree = {
-			'name': 'pyTreeGenerator.py',
+			'name': targetFile,
 			'children': []
 			}
 
@@ -15,7 +15,7 @@ class	pyParser:
 			suffix = os.path.splitext(key)[1]
 			if suffix == '.py':
 				self.modules[key] = astroid.parse(value)
-		startingNodes = self.findStarterFunction('pyTreeGenerator.py')
+		startingNodes = self.findStarterFunction(targetFile)
 		self.getAllFunctionDefs()
 		self.structerTree(self.tree['children'], startingNodes)
 		print(self.tree)
@@ -100,10 +100,11 @@ class	pyParser:
 		for callName in callExprs:
 			if callName in list(self.allFuncDefs.keys()):
 				funcCallExprs = []
-				child = {}
+				child = {
+					'name': callName,
+					'children': []
+					}
 
-				child['name'] = callName
-				child['children'] = []
 				for node in self.allFuncDefs[callName].nodes_of_class(astroid.Call):
 					if hasattr(node.func, 'name') and node.func.name != callName:
 						funcCallExprs.append(node.func.name)
