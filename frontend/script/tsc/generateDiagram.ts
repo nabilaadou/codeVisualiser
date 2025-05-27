@@ -5,6 +5,7 @@ export function	generateDiagram(tree : JSON) {
 	// figure out how to now be ontop of the help box
 	// removing the upload page
 	d3.select('#uploadPage').remove();	
+	d3.select('#userGuide').remove();
 
 	const svg = d3.create('svg')
 		.attr('height', '100vh')

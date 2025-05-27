@@ -79,6 +79,7 @@ uploadMenu.addEventListener('click', (event: Event) => {
     form.appendChild(fileInput);
     form.appendChild(submitButton);
     
+    // innerDiv.appendChild(exitButton);
     innerDiv.appendChild(img);
     innerDiv.appendChild(h3);
     innerDiv.appendChild(form);
@@ -87,4 +88,11 @@ uploadMenu.addEventListener('click', (event: Event) => {
     
     document.body.appendChild(outerDiv);
 	formElements(form, folderInput, fileInput);
+
+
+    outerDiv.addEventListener('click', (event) => {
+        const element = event.target as HTMLElement;
+        if (element.id == 'uploadPage')
+            outerDiv.remove();
+    })
 });

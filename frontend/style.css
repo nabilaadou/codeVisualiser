@@ -1,0 +1,53 @@
+html, body {
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+}
+
+#help {
+	box-shadow: -3px 10px 20px rgba(0, 0, 0, 0.2);
+	right: 0;
+	position: absolute;
+	text-align: center;
+	width: 17%;
+	height: 35vh;
+	border-radius: 20px;
+	margin-top: 20px;
+	margin-right: 10px;
+}
+
+#uploadMenu {
+	border: none;
+	border-radius: 5px;
+	background-color: coral;
+	margin-top: 20px;
+	margin-left: 10px;
+	width: 3cm;
+	height: 1cm;
+	font-size: 16px;
+	font-family: sans-serif;
+}
+
+#userGuide {
+  width: 50%;
+  /* margin: 0 auto; */
+  margin-left: 25%;
+  margin-top: 3cm;
+  text-align: left;
+  font-family: sans-serif;
+  opacity: 0.5;
+}
+
+.userGuidePs {
+	margin: 0;
+}
+
+.userGuideNote {
+	font-style: italic;
+	margin-top: 1cm;
+	font-size: 15px;
+}
+
+.userGuidHs {
+	margin-bottom: 0.1cm;
+}

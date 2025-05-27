@@ -4,52 +4,30 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>code visualizer</title>
-	<style>
-		html, body {
-			margin: 0;
-			padding: 0;
-			overflow: hidden;
-		}
-
-		#help {
-			box-shadow: -3px 10px 20px rgba(0, 0, 0, 0.2);
-			right: 0;
-			position: absolute;
-			text-align: center;
-			width: 17%;
-			height: 35vh;
-			border-radius: 20px;
-			margin-top: 20px;
-			margin-right: 10px;
-		}
-
-		#uploadMenu {
-			border: none;
-			border-radius: 5px;
-			background-color: coral;
-			margin-top: 20px;
-			margin-left: 10px;
-			width: 3cm;
-			height: 1cm;
-			font-size: 16px;
-			font-family: sans-serif;
-		}
-	</style>
+	<link rel="stylesheet" href="style.css">
 </head>
 <body>
 	<div>
 		<div id="help">
-			help box
 		</div>
 		<div>
 			<button id="uploadMenu"> upload </button>
 		</div>
-		<!-- <form id="uploadForm">
-			<input type="file" id="fileInput" webkitdirectory />
-			<button type="submit">Upload</button>
-		</form> -->
-		<!-- <script type="module" src="redirectInput.js"></script> -->
-		<script type="module" src="uploadButton.js"></script>
+		<div id="userGuide">
+			<h1 class="userGuidHs">How to Use This Tool</h1>
+			<p class="userGuidePs">Welcome. This tool generates a call graph from your Python project to help you understand the flow of function calls.</p>
+			<h3 class="userGuidHs">Getting Started</h2>
+			<h4 class="userGuidHs">Click the Upload Button</h4>
+			<p class="userGuidePs">You'll find it on the top left corner of the screen.</p>
+			<h4 class="userGuidHs">Upload Your Project Folder</h4>
+			<p class="userGuidePs">Select the entire folder containing your Python code (not just a single file).</p>
+			<h4 class="userGuidHs">Enter the Entry Point File</h4>
+			<p class="userGuidePs">Type the name of the Python file that starts your program, such as main.py or app.py.</p>
+			<h4 class="userGuidHs">View the Call Graph</h4>
+			<p class="userGuidePs">Once uploaded, the tool will analyze your project and display an interactive call graph showing how functions are connected.</p>
+			<p class="userGuideNote">Note: Make sure your code runs without syntax errors, or the analysis may fail.</p>
+		</div>
+		<script type="module" src="./script/js/uploadButton.js"></script>
 	</div>
 </body>
 </html>
