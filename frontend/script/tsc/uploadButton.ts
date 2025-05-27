@@ -61,6 +61,10 @@ uploadMenu.addEventListener('click', (event: Event) => {
     fileInput.style.marginTop = '0.1cm';
     fileInput.type = 'text';
 	fileInput.setAttribute('placeholder', 'eg: main.py');
+	fileInput.setAttribute('List', 'fileSuggestions');
+
+    const dataList = document.createElement('datalist');
+    dataList.setAttribute('id', 'fileSuggestions');
 
     const	submitButton = document.createElement('button');
     submitButton.type = 'submit';
@@ -77,6 +81,7 @@ uploadMenu.addEventListener('click', (event: Event) => {
     form.appendChild(folderInput);
     form.appendChild(fileInputLabel);
     form.appendChild(fileInput);
+    form.appendChild(dataList);
     form.appendChild(submitButton);
     
     // innerDiv.appendChild(exitButton);
@@ -94,5 +99,18 @@ uploadMenu.addEventListener('click', (event: Event) => {
         const element = event.target as HTMLElement;
         if (element.id == 'uploadPage')
             outerDiv.remove();
+    })
+
+    folderInput.addEventListener('change', () => {
+        if (folderInput.files.length > 0) {
+            dataList.innerHTML = '' //removing any previous assigned options
+            for (let i = 0; i < folderInput.files.length; ++i) {
+                const option = document.createElement('option');
+                option.setAttribute('value', folderInput.files[i].name);
+                dataList.appendChild(option);
+            }
+        } else {
+            console.log('no folder was selected');
+        }
     })
 });
