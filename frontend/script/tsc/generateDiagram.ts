@@ -18,7 +18,8 @@ export function	generateDiagram(tree : JSON) {
 	const centerX = window.innerWidth / 2;
 	const centerY = window.innerHeight / 2;
 
-	const g = svg.append("g");
+	const g = svg.append("g")
+					.attr('id', 'diagram');
 
 	g.selectAll('.links')
 		.data(root.links())
@@ -39,10 +40,14 @@ export function	generateDiagram(tree : JSON) {
 			.attr('class', 'nodes')
 			.attr('transform', d => `translate(${d.x + centerX}, ${d.y + centerY})`);
 	
+	nodes.on('click', function(_, d) {
+		infosBar(d, centerX, centerY);
+	});
+
 	nodes.append('text')
 		.attr('text-anchor', 'middle')
 		.text(d => d.data.name);
-	
+
 	const zoom = d3.zoom()
 		.on('zoom', (event) => {
 			g.attr('transform', event.transform);
@@ -56,4 +61,32 @@ export function	generateDiagram(tree : JSON) {
 	d3.select('body')
 	  .append(() => svg.node());
 	
+}
+
+function	infosBar(d, centerX, centerY) {
+	//remove any shown bar
+	const bar = document.getElementById('nodeBar');
+	if (bar)
+		bar.remove();
+	else {
+		const diagram = document.getElementById('diagram');
+
+		const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+		g.id = 'nodeBar';
+		g.setAttribute('transform', `translate(${d.x + centerX}, ${d.y + centerY - 120})`);
+
+		const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+		rect.setAttribute('fill', 'lightblue');
+		rect.setAttribute('opacity', '0.3');
+		rect.setAttribute('width', '90px');
+		rect.setAttribute('height', '100px');
+
+		const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+		text.textContent = 'info';
+		text.setAttribute('text-anchor', 'middle');
+
+		g.appendChild(rect);
+		g.appendChild(text);
+		diagram.appendChild(g);
+	}
 }
