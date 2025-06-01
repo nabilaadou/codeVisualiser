@@ -1,6 +1,27 @@
 services:
   backend:
-  frontend:
-volumes:
+    image: backend
+    build: ./backend
+    container_name: backend
+    restart: always
+    ports:
+      - 8000:8000
+    networks:
+      - codeVisualizer
+    volumes:
+      - ./backend:/diagram
+  # frontend:
+  #   image: frontend
+  #   build: ./frontend
+  #   container_name: frontend
+  #   restart: always
+  #   ports:
+  #     - 9000:9000
+  #   networks:
+  #     - codeVisualizer
+  #   depends_on:
+  #     - backend
+  #   volumes:
+  #     -
 networks:
   codeVisualizer
