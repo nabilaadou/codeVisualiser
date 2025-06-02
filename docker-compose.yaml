@@ -9,19 +9,41 @@ services:
     networks:
       - codeVisualizer
     volumes:
-      - ./backend:/diagram
-  # frontend:
-  #   image: frontend
-  #   build: ./frontend
-  #   container_name: frontend
-  #   restart: always
-  #   ports:
-  #     - 9000:9000
-  #   networks:
-  #     - codeVisualizer
-  #   depends_on:
-  #     - backend
-  #   volumes:
-  #     -
+      - backend-src:/backend
+  frontend:
+    image: frontend
+    build: ./frontend
+    container_name: frontend
+    restart: always
+    networks:
+      - codeVisualizer
+    depends_on:
+      - backend
+    volumes:
+      - frontend-src:/frontend
+  nginx:
+    image: nginx
+    build: ./nginx
+    container_name: nginx
+    restart: always
+    ports:
+      - 80:80
+    networks:
+      - codeVisualizer
+    depends_on:
+      - frontend
+    volumes:
+      - frontend-src:/usr/share/nginx/html
 networks:
-  codeVisualizer
+  codeVisualizer:
+volumes:
+  frontend-src:
+    driver_opts:
+      o: bind
+      type: none
+      device: /home/laundryday/Desktop/codeVisualiser/frontend
+  backend-src:
+    driver_opts:
+      o: bind
+      type: none
+      device: /home/laundryday/Desktop/codeVisualiser/backend

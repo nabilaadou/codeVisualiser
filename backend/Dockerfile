@@ -1,13 +1,13 @@
 FROM python:3
 
-RUN mkdir /diagram
+RUN mkdir /backend
 
-WORKDIR /diagram
+WORKDIR /backend
 
-COPY requirements.txt /script
+COPY requirements.txt /root/script/requirements.txt
 
-RUN pip install -r /script/requirements.txt
+RUN pip install -r /root/script/requirements.txt
 
 EXPOSE 8000
 
-CMD ["fastapi", "dev", "server.py"]
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

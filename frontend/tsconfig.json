@@ -5,7 +5,7 @@
     "module": "ES2020",
     "isolatedModules": false,
     "moduleResolution": "node",
-    "outDir": "./script/js",
+    "outDir": "./dist",
   },
-  "include": ["script/tsc"]
+  "include": ["./src/app"]
 }
