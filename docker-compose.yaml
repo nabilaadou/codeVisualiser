@@ -27,7 +27,7 @@ services:
     container_name: nginx
     restart: always
     ports:
-      - 80:80
+      - 8080:8080
     networks:
       - codeVisualizer
     depends_on:
